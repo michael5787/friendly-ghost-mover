@@ -109,7 +109,7 @@ export function SpaceAuth({ space, children }: Props) {
     setBusy(false);
   };
 
-  if (!ready) {
+  if (!ready || (session && !profileLoaded)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas">
         <span className="text-sm text-muted-foreground">جارٍ التحميل…</span>
@@ -117,13 +117,37 @@ export function SpaceAuth({ space, children }: Props) {
     );
   }
 
-  if (session && profile && profile.status === "approved") {
+  const spaceAllowed = !!profile && (isAdmin || profile.space === space);
+
+  if (session && profile && profile.status === "approved" && spaceAllowed) {
     return <>{children({ session, profile, client, signOut })}</>;
+  }
+
+  if (session && profile && profile.status === "approved" && !spaceAllowed) {
+    return (
+      <SpaceShell space={space} onSignOut={signOut}>
+        <div className="text-center">
+          <h1 className="text-2xl font-normal text-foreground">{session.user.email}</h1>
+          <p className="mt-4 text-sm text-muted-foreground">
+            هذا الحساب مخصص لفضاء {SPACE_LABEL[profile.space]} ولا يمكنه الدخول إلى {config.title}.
+          </p>
+          <a href={SPACES[profile.space].path} className="btn-primary mt-6 inline-block">
+            الانتقال إلى فضائي
+          </a>
+          <div className="mt-8 flex justify-end">
+            <button type="button" onClick={signOut} className="btn-text">
+              تسجيل الخروج
+            </button>
+          </div>
+        </div>
+      </SpaceShell>
+    );
   }
 
   if (session) {
     const status = profile?.status ?? "pending";
     return (
+
       <SpaceShell space={space} onSignOut={signOut}>
         <div className="text-center">
           <h1 className="text-2xl font-normal text-foreground">{session.user.email}</h1>
