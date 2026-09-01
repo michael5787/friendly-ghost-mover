@@ -53,20 +53,26 @@ export function SpaceAuth({ space, children }: Props) {
     let active = true;
     if (!session) {
       setProfile(null);
+      setIsAdmin(false);
+      setProfileLoaded(false);
       return;
     }
-    client
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setProfile(data ?? null);
-      });
+    setProfileLoaded(false);
+    void (async () => {
+      const [{ data: prof }, { data: roles }] = await Promise.all([
+        client.from("profiles").select("*").eq("id", session.user.id).maybeSingle(),
+        client.from("user_roles").select("role").eq("user_id", session.user.id),
+      ]);
+      if (!active) return;
+      setProfile(prof ?? null);
+      setIsAdmin((roles ?? []).some((r) => r.role === "super_admin"));
+      setProfileLoaded(true);
+    })();
     return () => {
       active = false;
     };
   }, [client, session]);
+
 
   const signOut = async () => {
     await client.auth.signOut();
